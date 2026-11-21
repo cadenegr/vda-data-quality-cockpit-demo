@@ -1,0 +1,6 @@
+{"name": "vda-dq-cockpit", "description": "VDA data quality cockpit for suppliers and carriers",
+ "resources": [
+  {"name": "sql-warehouse", "sql_warehouse": {"id": "<your-warehouse-id>", "permission": "CAN_USE"}},
+  {"name": "genie-space", "genie_space": {"space_id": "<your-genie-space-id>", "permission": "CAN_RUN"}},
+  {"name": "llm", "serving_endpoint": {"name": "databricks-qwen3-next-80b-a3b-instruct", "permission": "CAN_QUERY"}}
+ ]}

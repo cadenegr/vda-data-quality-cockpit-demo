@@ -1,0 +1,116 @@
+{
+ "version": 2,
+ "config": {
+  "sample_questions": [
+   {
+    "id": "1f36b384b73b48bbb9ba4c484958a7de",
+    "question": [
+     "Show the top issues of supplier 100300 and how to fix them"
+    ]
+   },
+   {
+    "id": "36cf67b1c2e44d7ba67880def91729ff",
+    "question": [
+     "What are the 10 most frequent data quality issues and how are they fixed?"
+    ]
+   },
+   {
+    "id": "3a5d65ee8f9b4a6585df7777516191fb",
+    "question": [
+     "Show the GPS trip of transport order 19000123"
+    ]
+   },
+   {
+    "id": "a3762a8553b048f0b69424e96185c9cc",
+    "question": [
+     "How many despatch advices (4987) are missing the transport order number?"
+    ]
+   },
+   {
+    "id": "d0b45b1ee8fd4f4fbbc6887ae060af9b",
+    "question": [
+     "Which carriers have the worst quality score (at least 50 messages)?"
+    ]
+   }
+  ]
+ },
+ "data_sources": {
+  "tables": [
+   {
+    "identifier": "workspace.vda_dq.findings"
+   },
+   {
+    "identifier": "workspace.vda_dq.fix_suggestions"
+   },
+   {
+    "identifier": "workspace.vda_dq.msg_4933"
+   },
+   {
+    "identifier": "workspace.vda_dq.msg_4945"
+   },
+   {
+    "identifier": "workspace.vda_dq.msg_4987"
+   },
+   {
+    "identifier": "workspace.vda_dq.rules"
+   },
+   {
+    "identifier": "workspace.vda_dq.scores_carrier"
+   },
+   {
+    "identifier": "workspace.vda_dq.scores_supplier"
+   }
+  ]
+ },
+ "instructions": {
+  "text_instructions": [
+   {
+    "id": "416a56b6b6b648bd97243cfb89c7b568",
+    "content": [
+     "* Domain: inbound logistics of one car plant. Suppliers ship parts by truck via carriers (freight forwarders). They exchange VDA EDI messages:\n",
+     "  - msg_4933 = VDA4933 T1 transport order (supplier -> carrier). to_number is the transport order (TO) number.\n",
+     "  - msg_4945 = VDA4945 transport status (carrier -> the plant), one row per shipment status; contains GPS (geo), plate, timeslot_id (15-digit gate booking), to_number, shipment_number (delivery note).\n",
+     "  - msg_4987 = VDA4987 despatch advice / ASN (supplier -> the plant): what was actually loaded; shipment_number = delivery note number.\n",
+     "* Matching sequence for the digital transport file (DiTA): 1) 4933 to_number = 4945 to_number, 2) 4987 to_number + plant, 3) fallback delivery note (shipment_number) + supplier, 4) approximation by supplier, parts, plant, date.\n",
+     "* findings = one row per data-quality issue. Join findings.rule_id = rules.rule_id to explain the problem, the VDA field_path and the fix. severity: error > warning > info. responsible says who must fix it: supplier (4933, 4987) or carrier (4945).\n",
+     "* Partners: always show supplier_code together with name (from scores_supplier) and carrier_code together with name (from scores_carrier).\n",
+     "* quality_score = % of a partner's sent messages without any error-severity finding.\n",
+     "* When asked how to fix something, always quote rules.fix and rules.field_path.\n",
+     "* Values like 'UNKNOWN', 'FOLGT' (German: 'follows'), '0' or 'null' are placeholders, not real references.\n",
+     "* All columns are strings except counts and quality_score; cast dates with to_date().\n",
+     "* Missing values are NULL. A 'missing X' question is best answered from findings (e.g. rule_id = 'ASN_TO_MISSING'), not by scanning message tables.\n",
+     "* For counts of an issue: SELECT count(*) FROM findings WHERE rule_id = '<RULE>' (rule ids are in rules.rule_id; search rules.problem to find the right one).\n",
+     "* fix_suggestions = proposed corrections for despatch advices (4987) whose transport order number is missing or wrong: suggested_value is the most likely TO number, confidence high (can be applied) or medium (user must approve), reason explains the evidence. Join on supplier_code; message_key = findings.message_key.\n",
+     "* Use display_name from scores_supplier / scores_carrier when naming partners.\n",
+     "* fix_suggestions has one row per delivery note AND date_window ('next_day' = recommended default, 'same_day' = strict). Always filter date_window = 'next_day' unless the user asks for the strict variant, otherwise counts are doubled.\n"
+    ]
+   }
+  ],
+  "example_question_sqls": [
+   {
+    "id": "882938f9f5eb4846a65d66d268b65f30",
+    "question": [
+     "How many despatch advices are missing the transport order number and how do I fix it?"
+    ],
+    "sql": [
+     "SELECT r.rule_id, r.problem, r.field_path, r.fix, count(*) AS n\n",
+     "FROM workspace.vda_dq.findings f JOIN workspace.vda_dq.rules r USING (rule_id)\n",
+     "WHERE f.rule_id = 'ASN_TO_MISSING'\n",
+     "GROUP BY ALL"
+    ]
+   },
+   {
+    "id": "b81aee49fcf64782b00e3b6f3d0c936e",
+    "question": [
+     "What are the top issues of a supplier and how to fix them?"
+    ],
+    "sql": [
+     "SELECT f.rule_id, r.problem, r.field_path, r.fix, count(*) AS n\n",
+     "FROM workspace.vda_dq.findings f JOIN workspace.vda_dq.rules r USING (rule_id)\n",
+     "WHERE f.responsible = 'supplier' AND f.supplier_code = '100300'\n",
+     "GROUP BY ALL ORDER BY n DESC LIMIT 5"
+    ]
+   }
+  ]
+ }
+}

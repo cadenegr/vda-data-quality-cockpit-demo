@@ -1,0 +1,7 @@
+[theme]
+base = "light"
+backgroundColor = "#F4F7FA"           # page: very light blue-grey
+secondaryBackgroundColor = "#DFE6EE"  # sidebar, expanders, chat input: light grey-blue
+primaryColor = "#001E50"              # buttons, selected items, links: dark navy
+textColor = "#0B1A2E"                 # near-black navy text
+font = "sans serif"
